@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [layout, setLayout] = useState<Layout | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -56,7 +57,13 @@ export default function DashboardPage() {
       setOrg(currentOrg);
 
       const [profileRes, integrationsRes, insightsRes, kpiRes, layoutRes] = await Promise.all([
-        supabase.from("business_profile").select("*").eq("org_id", currentOrg.id).maybeSingle(),
+        supabase
+          .from("business_profile_versions")
+          .select("*")
+          .eq("org_id", currentOrg.id)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
         supabase.from("integrations").select("id,provider,status").eq("org_id", currentOrg.id),
         supabase
           .from("insights")
@@ -68,8 +75,33 @@ export default function DashboardPage() {
           .select("id,metric_key,metric_value,period_start,period_end")
           .eq("org_id", currentOrg.id)
           .order("period_end", { ascending: false }),
-        supabase.from("dashboard_layout").select("version,reason").eq("org_id", currentOrg.id).maybeSingle(),
+        supabase
+          .from("dashboard_layout_versions")
+          .select("version,reason")
+          .eq("org_id", currentOrg.id)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
+
+      // Every one of these queries can fail independently (wrong table name,
+      // RLS denial, network issue) - surface that instead of silently
+      // treating a query error the same as "no rows yet". That exact gap
+      // (querying business_profile / dashboard_layout, which do not exist -
+      // the real tables are business_profile_versions /
+      // dashboard_layout_versions) is what made this screen look empty
+      // while real data existed in Supabase.
+      const queryErrors = [
+        ["פרופיל עסק", profileRes.error],
+        ["אינטגרציות", integrationsRes.error],
+        ["תובנות", insightsRes.error],
+        ["KPI", kpiRes.error],
+        ["גרסת דשבורד", layoutRes.error],
+      ].filter(([, err]) => err) as [string, { message: string }][];
+      if (queryErrors.length > 0) {
+        console.error("Dashboard query errors:", queryErrors);
+        setLoadErrors(queryErrors.map(([label, err]) => `${label}: ${err.message}`));
+      }
 
       if (profileRes.data) setProfile(profileRes.data as Profile);
       if (integrationsRes.data) setIntegrations(integrationsRes.data as Integration[]);
@@ -120,6 +152,17 @@ export default function DashboardPage() {
           התנתקות
         </button>
       </header>
+
+      {loadErrors.length > 0 && (
+        <div className="glass-card mb-6 border border-[var(--warn)] text-sm text-[var(--warn)]">
+          <p className="font-semibold mb-1">חלק מהנתונים לא נטענו:</p>
+          <ul className="list-disc pr-5 space-y-0.5">
+            {loadErrors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         {kpis.length === 0 && (
