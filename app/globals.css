@@ -23,7 +23,7 @@ body {
   margin: 0;
   background: radial-gradient(circle at 20% -10%, #201a3a 0%, var(--bg) 45%), var(--bg);
   color: var(--text);
-  font-family: "Assistant", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-assistant), system-ui, -apple-system, sans-serif;
   min-height: 100vh;
 }
 
