@@ -5,14 +5,17 @@ import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // Covers two cases with one check: an already-logged-in user opening the
+    // site, and a user who just clicked the magic-link email — Supabase's
+    // client (detectSessionInUrl: true) parses the token from the URL before
+    // this resolves, so getSession() already returns the fresh session.
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         router.replace("/dashboard");
@@ -20,9 +23,18 @@ export default function LoginPage() {
         setChecking(false);
       }
     });
+
+    // Belt-and-suspenders: react directly to the auth event too, in case it
+    // fires slightly after the check above.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        router.replace("/dashboard");
+      }
+    });
+    return () => sub.subscription.unsubscribe();
   }, [router]);
 
-  async function sendCode(e: FormEvent) {
+  async function sendMagicLink(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
@@ -34,24 +46,7 @@ export default function LoginPage() {
     if (error) {
       setMessage("שגיאה: " + error.message);
     } else {
-      setStep("code");
-    }
-  }
-
-  async function verifyCode(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: "email",
-    });
-    setLoading(false);
-    if (error) {
-      setMessage("קוד שגוי או פג תוקף: " + error.message);
-    } else {
-      router.replace("/dashboard");
+      setSent(true);
     }
   }
 
@@ -73,8 +68,8 @@ export default function LoginPage() {
           המערכת שלומדת את העסק שלך ובונה לך דשבורד אישי
         </p>
 
-        {step === "email" ? (
-          <form onSubmit={sendCode} className="space-y-4">
+        {!sent ? (
+          <form onSubmit={sendMagicLink} className="space-y-4">
             <input
               type="email"
               required
@@ -84,27 +79,25 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
             />
             <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? "שולח קוד..." : "קבל קוד כניסה"}
+              {loading ? "שולח קישור..." : "שלח לי קישור כניסה"}
             </button>
           </form>
         ) : (
-          <form onSubmit={verifyCode} className="space-y-4">
-            <p className="text-sm text-[var(--text-dim)]">
-              שלחנו קוד בן 6 ספרות ל-{email}
+          <div className="space-y-3">
+            <p className="text-sm">
+              שלחנו קישור כניסה ל-<strong>{email}</strong>.
             </p>
-            <input
-              type="text"
-              required
-              inputMode="numeric"
-              placeholder="קוד בן 6 ספרות"
-              className="input-field text-center tracking-[0.5em]"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? "מאמת..." : "כניסה"}
+            <p className="text-sm text-[var(--text-dim)]">
+              פתח את המייל ולחץ על הקישור - זה יעביר אותך ישר לדשבורד. הקישור בתוקף לשעה, ולשימוש חד-פעמי בלבד.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSent(false)}
+              className="text-sm text-[var(--text-dim)] underline"
+            >
+              שלח לאימייל אחר
             </button>
-          </form>
+          </div>
         )}
 
         {message && <p className="text-sm text-[var(--warn)] mt-4">{message}</p>}

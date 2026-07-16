@@ -4,7 +4,7 @@
 
 ## התחברות לדמו
 - אימייל: markp1293@gmail.com (המשתמש היחיד הקיים כרגע במערכת ה-Auth)
-- ההתחברות מבוססת קוד בן 6 ספרות שנשלח למייל - לא קישור עם redirect, כדי לעקוף את הצורך להגדיר Auth Redirect URLs ב-Supabase בשלב הזה.
+- ההתחברות מבוססת קישור (Magic Link) שנשלח למייל - לחיצה עליו מעבירה ישר לדשבורד. Site URL ו-Redirect URLs מוגדרים כראוי ב-Supabase ומצביעים על nucleus-dashboard-kappa.vercel.app (תוקן ב-16.7.2026 - קודם הצביעו בטעות על דומיין אחר לגמרי, client-dashboard-ai.vercel.app).
 
 ## מגבלות ידועות (V0, לא production)
 - אין הרשמת משתמשים חדשים (shouldCreateUser: false) - רק Mark יכול להתחבר כרגע.
