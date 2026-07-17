@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
 type Org = { id: string; name: string; vertical: string };
@@ -183,7 +184,14 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="glass-card">
-          <h2 className="font-bold mb-3">פרופיל העסק</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold">פרופיל העסק</h2>
+            {profile && (
+              <Link href="/discovery" className="text-xs text-[var(--text-dim)] underline hover:text-[var(--text)]">
+                עדכן פרופיל
+              </Link>
+            )}
+          </div>
           {profile ? (
             <ul className="text-sm space-y-2 text-[var(--text-dim)]">
               <li>
@@ -203,7 +211,12 @@ export default function DashboardPage() {
               </li>
             </ul>
           ) : (
-            <p className="text-sm text-[var(--text-dim)]">טרם הושלם ראיון Discovery.</p>
+            <div className="text-sm text-[var(--text-dim)] space-y-3">
+              <p>טרם הושלם ראיון Discovery - זה מה שבונה לך את הדשבורד האישי.</p>
+              <Link href="/discovery" className="btn-primary inline-block text-sm">
+                התחל ראיון Discovery
+              </Link>
+            </div>
           )}
         </div>
 
